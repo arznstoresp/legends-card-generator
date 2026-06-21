@@ -117,6 +117,45 @@
   }
   .field .hint{font-size:11px;color:var(--text-dim);margin-top:6px;}
 
+  .mode-toggle{
+    display:flex;
+    gap:8px;
+    margin-bottom:20px;
+    background:#0d1015;
+    border:1px solid var(--panel-border);
+    border-radius:10px;
+    padding:5px;
+  }
+  .mode-btn{
+    flex:1;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    font-family:'Oswald',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:0.4px;
+    padding:10px 6px;
+    border-radius:7px;
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .mode-btn.active{
+    background:linear-gradient(180deg,var(--gold-light),var(--gold) 60%,var(--gold-deep));
+    color:#1a1303;
+  }
+  .ai-note{
+    font-size:11.5px;
+    color:var(--text-dim);
+    line-height:1.5;
+    margin:-6px 0 18px;
+    padding:10px 12px;
+    background:rgba(212,175,55,0.06);
+    border:1px solid rgba(212,175,55,0.2);
+    border-radius:8px;
+  }
+  .ai-note b{color:var(--gold-light);}
+
   .dropzone{
     border:2px dashed var(--panel-border);
     border-radius:12px;
@@ -271,6 +310,23 @@
     <section class="panel form-panel">
       <h2>Dados do jogador</h2>
 
+      <div class="mode-toggle">
+        <button type="button" class="mode-btn active" data-mode="template">⚡ Instantâneo</button>
+        <button type="button" class="mode-btn" data-mode="ai">✨ IA Realista</button>
+      </div>
+
+      <div class="ai-note" id="aiNote" style="display:none;">
+        Esse modo manda sua foto pra um servidor de IA (OpenAI) que repinta a
+        figurinha inteira — fica mais realista, mas <b>leva ~10–30s</b> e tem
+        <b>custo por geração</b>. Veja o guia de configuração do backend.
+      </div>
+
+      <div class="field ai-only" id="serverUrlField" style="display:none;">
+        <label for="serverUrlInput">Endereço do servidor de IA</label>
+        <input type="text" id="serverUrlInput" placeholder="https://seu-backend.onrender.com" autocomplete="off">
+        <div class="hint">Cole a URL do backend depois de publicá-lo (veja o README do backend)</div>
+      </div>
+
       <div class="field">
         <label>Foto do cliente</label>
         <div class="dropzone" id="dropzone">
@@ -401,6 +457,7 @@
 
   var state = {
     img: null,
+    photoFile: null,
     zoom: 1,
     offX: 0,
     offY: 0,
@@ -429,6 +486,12 @@
 
   var downloadPngBtn = document.getElementById('downloadPng');
   var downloadPdfBtn = document.getElementById('downloadPdf');
+
+  var modeButtons = document.querySelectorAll('.mode-btn');
+  var aiNote = document.getElementById('aiNote');
+  var serverUrlField = document.getElementById('serverUrlField');
+  var serverUrlInput = document.getElementById('serverUrlInput');
+  var currentMode = 'template';
 
   /* ====================== HELPERS DE CAMINHO ====================== */
 
@@ -1194,6 +1257,7 @@
 
   function loadFile(file) {
     if (!file || !file.type || file.type.indexOf('image') !== 0) return;
+    state.photoFile = file;
     var url = URL.createObjectURL(file);
     var img = new Image();
     img.onload = function () {
@@ -1280,10 +1344,31 @@
   window.addEventListener('touchmove', pointerMove, { passive: false });
   window.addEventListener('touchend', pointerUp);
 
+  /* ====================== MODO: INSTANTÂNEO x IA ====================== */
+
+  serverUrlInput.value = localStorage.getItem('legendsAiServerUrl') || '';
+  serverUrlInput.addEventListener('input', function () {
+    localStorage.setItem('legendsAiServerUrl', serverUrlInput.value.trim());
+  });
+
+  modeButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      modeButtons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      currentMode = btn.getAttribute('data-mode');
+      var isAi = currentMode === 'ai';
+      aiNote.style.display = isAi ? 'block' : 'none';
+      serverUrlField.style.display = isAi ? 'block' : 'none';
+      clearError();
+    });
+  });
+
   /* ====================== CAMPOS DE TEXTO (live update) ====================== */
 
   [nameInput, numberInput, positionInput].forEach(function (el) {
-    el.addEventListener('input', requestDraw);
+    el.addEventListener('input', function () {
+      if (currentMode === 'template') requestDraw();
+    });
   });
   numberInput.addEventListener('input', function () {
     this.value = this.value.replace(/\D/g, '').slice(0, 2);
@@ -1299,7 +1384,89 @@
     errorMsg.classList.remove('show');
   }
 
+  function celebrateGeneration() {
+    state.generated = true;
+    downloadPngBtn.disabled = false;
+    downloadPdfBtn.disabled = false;
+    cardStage.style.boxShadow = '0 0 0 3px rgba(212,175,55,0.7), 0 18px 50px rgba(0,0,0,0.55)';
+    setTimeout(function () {
+      cardStage.style.boxShadow = '';
+    }, 600);
+    cardStage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // desenha a imagem pronta (gerada pela IA) ocupando o canvas inteiro,
+  // recortando no formato 50x65mm — a IA já desenhou moldura/escudo/etc.
+  function drawAIResult(img) {
+    ctx.clearRect(0, 0, CW, CH);
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    var scale = Math.max(CW / iw, CH / ih);
+    var dw = iw * scale, dh = ih * scale;
+    var dx = (CW - dw) / 2, dy = (CH - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  function generateWithAI() {
+    clearError();
+    if (!state.photoFile) {
+      showError('Envie uma foto antes de gerar a figurinha.');
+      return;
+    }
+    if (!nameInput.value.trim()) {
+      showError('Digite o nome do jogador.');
+      return;
+    }
+    var serverUrl = (serverUrlInput.value || '').trim().replace(/\/+$/, '');
+    if (!serverUrl) {
+      showError('Informe a URL do servidor de IA (veja o README do backend).');
+      return;
+    }
+
+    var originalLabel = generateBtn.textContent;
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Gerando com IA… (até 30s)';
+
+    var formData = new FormData();
+    formData.append('photo', state.photoFile);
+    formData.append('name', nameInput.value.trim());
+    formData.append('number', (numberInput.value || '10').trim());
+    formData.append('position', (positionInput.value || 'ATACANTE').trim());
+
+    fetch(serverUrl + '/api/generate-legends-card', { method: 'POST', body: formData })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.json().catch(function () { return {}; }).then(function (body) {
+            throw new Error(body.error || ('Erro do servidor (' + resp.status + ')'));
+          });
+        }
+        return resp.json();
+      })
+      .then(function (data) {
+        return new Promise(function (resolve, reject) {
+          var img = new Image();
+          img.onload = function () { resolve(img); };
+          img.onerror = function () { reject(new Error('A IA respondeu, mas a imagem não pôde ser carregada.')); };
+          img.src = data.image;
+        });
+      })
+      .then(function (img) {
+        drawAIResult(img);
+        celebrateGeneration();
+      })
+      .catch(function (err) {
+        showError('Não foi possível gerar com IA: ' + err.message);
+      })
+      .finally(function () {
+        generateBtn.disabled = false;
+        generateBtn.textContent = originalLabel;
+      });
+  }
+
   generateBtn.addEventListener('click', function () {
+    if (currentMode === 'ai') {
+      generateWithAI();
+      return;
+    }
     clearError();
     if (!state.img) {
       showError('Envie uma foto antes de gerar a figurinha.');
@@ -1310,14 +1477,7 @@
       return;
     }
     draw();
-    state.generated = true;
-    downloadPngBtn.disabled = false;
-    downloadPdfBtn.disabled = false;
-    cardStage.style.boxShadow = '0 0 0 3px rgba(212,175,55,0.7), 0 18px 50px rgba(0,0,0,0.55)';
-    setTimeout(function () {
-      cardStage.style.boxShadow = '';
-    }, 600);
-    cardStage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    celebrateGeneration();
   });
 
   /* ====================== EXPORTAÇÃO ====================== */
@@ -1330,7 +1490,7 @@
   }
 
   downloadPngBtn.addEventListener('click', function () {
-    draw();
+    if (currentMode !== 'ai') draw();
     canvas.toBlob(function (blob) {
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -1342,7 +1502,7 @@
   });
 
   downloadPdfBtn.addEventListener('click', function () {
-    draw();
+    if (currentMode !== 'ai') draw();
     var dataUrl = canvas.toDataURL('image/png');
     var jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
     if (!jsPDFCtor) {
