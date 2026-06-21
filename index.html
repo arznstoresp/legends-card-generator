@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legends Card Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Cinzel:wght@600;700;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0c10;
+    --bg-soft:#11141a;
+    --panel:#15181f;
+    --panel-border:#262b35;
+    --gold:#d4af37;
+    --gold-light:#f6e3a1;
+    --gold-deep:#8a6516;
+    --green:#0f7a3d;
+    --text:#ece8dc;
+    --text-dim:#9aa0ad;
+    --danger:#e2574c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(900px 500px at 15% -10%, rgba(212,175,55,0.08), transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, rgba(15,122,61,0.10), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Oswald',sans-serif;
+    min-height:100vh;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap;}
+  .crest-mini{
+    width:40px;height:48px;flex:0 0 auto;
+    background:linear-gradient(160deg,var(--gold-light),var(--gold) 45%,var(--gold-deep));
+    clip-path:polygon(50% 0%,100% 18%,100% 60%,50% 100%,0% 60%,0% 18%);
+    box-shadow:0 2px 8px rgba(212,175,55,0.35);
+  }
+  header h1{
+    font-family:'Cinzel',serif;
+    font-weight:900;
+    font-size:clamp(22px,3.4vw,32px);
+    letter-spacing:1px;
+    margin:0;
+    color:var(--gold-light);
+    text-shadow:0 1px 0 rgba(0,0,0,0.6);
+  }
+  header h1 span{color:var(--text);font-weight:600;}
+  .tagline{
+    margin:2px 0 26px;
+    color:var(--text-dim);
+    font-size:14px;
+    letter-spacing:0.4px;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:880px){
+    .layout{grid-template-columns:1fr;}
+  }
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--bg-soft));
+    border:1px solid var(--panel-border);
+    border-radius:var(--radius);
+    padding:22px;
+  }
+  .panel h2{
+    font-family:'Cinzel',serif;
+    font-size:14px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 18px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel h2::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:linear-gradient(90deg,var(--panel-border),transparent);
+  }
+  .field{margin-bottom:18px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    margin-bottom:8px;
+  }
+  .field input,.field select{
+    width:100%;
+    background:#0d1015;
+    border:1px solid var(--panel-border);
+    color:var(--text);
+    padding:12px 14px;
+    border-radius:10px;
+    font-family:'Oswald',sans-serif;
+    font-size:15px;
+    outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .field input:focus,.field select:focus{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(212,175,55,0.15);
+  }
+  .field .hint{font-size:11px;color:var(--text-dim);margin-top:6px;}
+
+  .dropzone{
+    border:2px dashed var(--panel-border);
+    border-radius:12px;
+    padding:22px 16px;
+    text-align:center;
+    cursor:pointer;
+    position:relative;
+    transition:border-color .15s, background .15s;
+    background:rgba(255,255,255,0.015);
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--gold);
+    background:rgba(212,175,55,0.05);
+  }
+  .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .dropzone .dz-icon{font-size:26px;margin-bottom:6px;}
+  .dropzone .dz-text{font-size:13px;color:var(--text-dim);}
+  .dropzone .dz-text b{color:var(--gold-light);}
+  .dropzone.has-photo{padding:12px 16px;border-style:solid;}
+  .dz-thumb{
+    width:52px;height:52px;border-radius:50%;
+    object-fit:cover;border:2px solid var(--gold);
+    display:none;
+  }
+  .has-photo .dz-thumb{display:inline-block;vertical-align:middle;margin-right:10px;}
+  .has-photo .dz-icon, .has-photo .dz-default-text{display:none;}
+  .dz-row{display:flex;align-items:center;justify-content:center;}
+
+  .adjust{
+    display:none;
+    margin-top:14px;
+    background:#0d1015;
+    border:1px solid var(--panel-border);
+    border-radius:10px;
+    padding:14px;
+  }
+  .adjust.show{display:block;}
+  .adjust .row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .adjust label{font-size:11px;color:var(--text-dim);letter-spacing:0.5px;min-width:54px;text-transform:uppercase;}
+  .adjust input[type=range]{flex:1;accent-color:var(--gold);}
+  .adjust .hint{margin-top:2px;}
+  .btn-reset{
+    background:none;border:1px solid var(--panel-border);color:var(--text-dim);
+    font-size:11px;padding:6px 10px;border-radius:8px;cursor:pointer;letter-spacing:0.5px;
+  }
+  .btn-reset:hover{border-color:var(--gold);color:var(--gold-light);}
+
+  .btn-primary{
+    width:100%;
+    margin-top:6px;
+    background:linear-gradient(180deg,var(--gold-light),var(--gold) 55%,var(--gold-deep));
+    color:#1a1303;
+    border:none;
+    padding:15px 18px;
+    border-radius:10px;
+    font-family:'Cinzel',serif;
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(212,175,55,0.25);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(212,175,55,0.35);}
+  .btn-primary:active{transform:translateY(0);}
+
+  .error-msg{
+    display:none;
+    background:rgba(226,87,76,0.1);
+    border:1px solid rgba(226,87,76,0.4);
+    color:#ffb3ab;
+    font-size:12.5px;
+    padding:10px 12px;
+    border-radius:8px;
+    margin-top:12px;
+  }
+  .error-msg.show{display:block;}
+
+  .preview-panel{display:flex;flex-direction:column;align-items:center;}
+  .card-stage{
+    width:100%;
+    max-width:360px;
+    aspect-ratio:50/65;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 18px 50px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.15);
+    background:#000;
+    cursor:grab;
+    touch-action:none;
+  }
+  .card-stage.dragging{cursor:grabbing;}
+  .card-stage canvas{width:100%;height:100%;display:block;}
+  .dim-label{
+    margin-top:14px;
+    font-size:12px;
+    color:var(--text-dim);
+    letter-spacing:0.6px;
+  }
+  .dim-label b{color:var(--gold);}
+  .drag-hint{
+    margin-top:6px;
+    font-size:11.5px;
+    color:var(--text-dim);
+    text-align:center;
+  }
+  .download-row{
+    display:flex;
+    gap:12px;
+    margin-top:20px;
+    width:100%;
+    max-width:360px;
+  }
+  .btn-dl{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--gold-deep);
+    color:var(--gold-light);
+    padding:13px 10px;
+    border-radius:10px;
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    letter-spacing:0.8px;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:background .15s, opacity .15s;
+  }
+  .btn-dl:hover:not(:disabled){background:#1c2129;}
+  .btn-dl:disabled{opacity:0.4;cursor:not-allowed;}
+
+  footer{
+    margin-top:36px;
+    text-align:center;
+    font-size:11.5px;
+    color:var(--text-dim);
+    line-height:1.6;
+  }
+  footer strong{color:var(--gold);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="crest-mini"></div>
+    <h1>LEGENDS <span>Card Generator</span></h1>
+  </header>
+  <p class="tagline">Crie figurinhas colecionáveis premium no formato 50mm × 65mm, prontas para impressão.</p>
+
+  <main class="layout">
+
+    <section class="panel form-panel">
+      <h2>Dados do jogador</h2>
+
+      <div class="field">
+        <label>Foto do cliente</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="photoInput" accept="image/*">
+          <div class="dz-row">
+            <img class="dz-thumb" id="dzThumb" alt="">
+            <div>
+              <div class="dz-icon">📷</div>
+              <div class="dz-text dz-default-text">Toque ou arraste uma <b>foto</b> aqui</div>
+              <div class="dz-text dz-loaded-text" style="display:none;">Foto carregada — toque para trocar</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="adjust" id="adjustBox">
+          <div class="row">
+            <label>Zoom</label>
+            <input type="range" id="zoomRange" min="100" max="260" value="100">
+          </div>
+          <div class="row" style="justify-content:space-between;">
+            <span class="hint">Arraste a foto no quadro para reposicionar</span>
+            <button type="button" class="btn-reset" id="resetAdjust">Centralizar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="nameInput">Nome do jogador</label>
+        <input type="text" id="nameInput" maxlength="22" placeholder="Ex.: RONALDO SOUZA" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="numberInput">Número da camisa</label>
+        <input type="text" id="numberInput" maxlength="2" placeholder="Ex.: 10" inputmode="numeric" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="positionInput">Posição</label>
+        <input type="text" id="positionInput" list="posicoes" maxlength="20" placeholder="Ex.: ATACANTE" autocomplete="off">
+        <datalist id="posicoes">
+          <option value="Goleiro">
+          <option value="Zagueiro">
+          <option value="Lateral Direito">
+          <option value="Lateral Esquerdo">
+          <option value="Volante">
+          <option value="Meio-Campo">
+          <option value="Atacante">
+          <option value="Centroavante">
+          <option value="Ponta">
+        </datalist>
+      </div>
+
+      <button class="btn-primary" id="generateBtn">Gerar Figurinha ✨</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </section>
+
+    <section class="panel preview-panel">
+      <h2 style="width:100%;">Prévia da figurinha</h2>
+      <div class="card-stage" id="cardStage">
+        <canvas id="cardCanvas" width="1200" height="1560"></canvas>
+      </div>
+      <div class="dim-label">Formato real: <b>50mm × 65mm</b> · alta resolução para impressão</div>
+      <div class="drag-hint">Dica: arraste a foto dentro do quadro para ajustar o enquadramento</div>
+
+      <div class="download-row">
+        <button class="btn-dl" id="downloadPng" disabled>Baixar PNG</button>
+        <button class="btn-dl" id="downloadPdf" disabled>Baixar PDF</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    Design 100% autoral — escudo, bandeira estilizada e uniforme são ilustrações fictícias.<br>
+    Nenhuma marca, logotipo ou emblema oficial é utilizado. <strong>Legends Card Generator</strong> · ArznStoreSP
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ====================== CONSTANTES DE LAYOUT ======================
+     Canvas interno em alta resolução, proporção exata 50mm x 65mm
+     (1200 x 1560 = razão 0.76923..., igual a 50/65).
+     Ajuste estes valores se quiser redesenhar áreas específicas. */
+
+  var CW = 1200, CH = 1560;
+  var FRAME = 64;            // espessura da moldura metálica
+
+  // Janela da foto (formato "escudo" com topo em arco)
+  var PW_X = 80, PW_Y = 80, PW_W = 1040, PW_H = 980, PW_ARCH = 70, PW_R = 40;
+  var PW_BOTTOM = PW_Y + PW_H; // 1060
+
+  // Placa do número / "LEGENDS" (sobreposta no canto superior direito da foto)
+  var NP_X = 700, NP_Y = 125, NP_W = 360, NP_H = 220, NP_R = 18;
+
+  // Camisa (sobreposta na parte inferior da janela da foto)
+  var JERSEY_H = 270;
+  var JERSEY_TOP = PW_BOTTOM - JERSEY_H;
+
+  // Escudo fictício no peito da camisa
+  var CR_X = 410, CR_Y = JERSEY_TOP + 30, CR_W = 84, CR_H = 100;
+
+  // Faixa do nome
+  var NB_X = 80, NB_Y = 1086, NB_W = 1040, NB_H = 128, NB_R = 22;
+
+  // Posição
+  var POS_Y = 1250;
+
+  // Selos inferiores (bandeira / LEGENDS / bola)
+  var BADGE_Y = 1378, BADGE_R = 84;
+  var BADGE_FLAG_X = 250, BADGE_PLATE_X = 600, BADGE_BALL_X = 950;
+
+  /* ====================== ESTADO ====================== */
+
+  var state = {
+    img: null,
+    zoom: 1,
+    offX: 0,
+    offY: 0,
+    generated: false
+  };
+
+  /* ====================== REFERÊNCIAS DOM ====================== */
+
+  var canvas = document.getElementById('cardCanvas');
+  var ctx = canvas.getContext('2d');
+
+  var photoInput = document.getElementById('photoInput');
+  var dropzone = document.getElementById('dropzone');
+  var dzThumb = document.getElementById('dzThumb');
+  var adjustBox = document.getElementById('adjustBox');
+  var zoomRange = document.getElementById('zoomRange');
+  var resetAdjustBtn = document.getElementById('resetAdjust');
+
+  var nameInput = document.getElementById('nameInput');
+  var numberInput = document.getElementById('numberInput');
+  var positionInput = document.getElementById('positionInput');
+
+  var generateBtn = document.getElementById('generateBtn');
+  var errorMsg = document.getElementById('errorMsg');
+  var cardStage = document.getElementById('cardStage');
+
+  var downloadPngBtn = document.getElementById('downloadPng');
+  var downloadPdfBtn = document.getElementById('downloadPdf');
+
+  /* ====================== HELPERS DE DESENHO ====================== */
+
+  function roundRectPath(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.arcTo(x + w, y, x + w, y + r, r);
+    c.lineTo(x + w, y + h - r);
+    c.arcTo(x + w, y + h, x + w - r, y + h, r);
+    c.lineTo(x + r, y + h);
+    c.arcTo(x, y + h, x, y + h - r, r);
+    c.lineTo(x, y + r);
+    c.arcTo(x, y, x + r, y, r);
+    c.closePath();
+  }
+
+  // Caminho em formato "escudo": topo em arco, base com cantos arredondados
+  function archPath(c, x, y, w, h, archDepth, r) {
+    var left = x, right = x + w, shoulderY = y + archDepth, bottom = y + h;
+    var apexY = y;
+    var controlY = 2 * apexY - shoulderY;
+    c.beginPath();
+    c.moveTo(left, shoulderY);
+    c.quadraticCurveTo(x + w / 2, controlY, right, shoulderY);
+    c.lineTo(right, bottom - r);
+    c.arcTo(right, bottom, right - r, bottom, r);
+    c.lineTo(left + r, bottom);
+    c.arcTo(left, bottom, left, bottom - r, r);
+    c.lineTo(left, shoulderY);
+    c.closePath();
+  }
+
+  function goldGradient(c, x0, y0, x1, y1) {
+    var g = c.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, '#fff6d8');
+    g.addColorStop(0.25, '#f3d27a');
+    g.addColorStop(0.5, '#d4af37');
+    g.addColorStop(0.75, '#a9781f');
+    g.addColorStop(1, '#6e4c12');
+    return g;
+  }
+
+  function drawEmbossedText(c, text, cx, cy, fontSize, fontFamily, maxWidth, strokeColor) {
+    c.save();
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    var size = fontSize;
+    c.font = size + 'px ' + fontFamily;
+    while (c.measureText(text).width > maxWidth && size > 10) {
+      size -= 2;
+      c.font = size + 'px ' + fontFamily;
+    }
+    c.shadowColor = 'rgba(0,0,0,0.55)';
+    c.shadowBlur = 12;
+    c.shadowOffsetY = 5;
+    c.fillStyle = goldGradient(c, cx, cy - size / 2, cx, cy + size / 2);
+    c.fillText(text, cx, cy);
+    c.shadowColor = 'transparent';
+    c.shadowBlur = 0;
+    c.shadowOffsetY = 0;
+    c.lineWidth = Math.max(2, size * 0.035);
+    c.strokeStyle = strokeColor || 'rgba(35,20,5,0.85)';
+    c.strokeText(text, cx, cy);
+    c.restore();
+    return size;
+  }
+
+  function drawSimpleText(c, text, cx, cy, fontSize, fontFamily, color, letterSpacing) {
+    c.save();
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = fontSize + 'px ' + fontFamily;
+    c.fillStyle = color;
+    if (c.letterSpacing !== undefined) c.letterSpacing = (letterSpacing || 0) + 'px';
+    c.shadowColor = 'rgba(0,0,0,0.5)';
+    c.shadowBlur = 6;
+    c.shadowOffsetY = 2;
+    c.fillText(text, cx, cy);
+    c.restore();
+  }
+
+  function seededRandom(seed) {
+    var s = seed % 2147483647;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+
+  /* ====================== FUNDO ====================== */
+
+  function drawBackground() {
+    // base radial dourada (simula luz de estádio ao centro-topo)
+    var g = ctx.createRadialGradient(CW * 0.5, CH * 0.22, 60, CW * 0.5, CH * 0.5, CH * 0.85);
+    g.addColorStop(0, '#fff3c4');
+    g.addColorStop(0.18, '#f0cf6c');
+    g.addColorStop(0.45, '#caa23a');
+    g.addColorStop(0.72, '#7a5613');
+    g.addColorStop(1, '#2a1c06');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, CW, CH);
+
+    // raios de luz cinematográficos
+    ctx.save();
+    ctx.globalAlpha = 0.07;
+    ctx.fillStyle = '#fffbe6';
+    for (var i = 0; i < 5; i++) {
+      ctx.save();
+      ctx.translate(CW * (0.15 + i * 0.18), -60);
+      ctx.rotate((-18 + i * 9) * Math.PI / 180);
+      ctx.fillRect(-40, 0, 80, CH * 1.4);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // textura sutil (ruído dourado)
+    var rnd = seededRandom(42);
+    ctx.save();
+    for (var n = 0; n < 700; n++) {
+      var rx = rnd() * CW, ry = rnd() * CH, rr = rnd() * 1.6 + 0.3;
+      ctx.globalAlpha = rnd() * 0.06 + 0.02;
+      ctx.fillStyle = rnd() > 0.5 ? '#fff7d6' : '#3a2606';
+      ctx.beginPath();
+      ctx.arc(rx, ry, rr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // vinheta de profundidade
+    var v = ctx.createRadialGradient(CW * 0.5, CH * 0.46, CH * 0.25, CW * 0.5, CH * 0.5, CH * 0.78);
+    v.addColorStop(0, 'rgba(0,0,0,0)');
+    v.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, CW, CH);
+  }
+
+  /* ====================== MOLDURA METÁLICA ====================== */
+
+  function drawFrame() {
+    // anel principal
+    roundRectPath(ctx, FRAME / 2, FRAME / 2, CW - FRAME, CH - FRAME, 30);
+    ctx.lineWidth = FRAME;
+    ctx.strokeStyle = goldGradient(ctx, 0, 0, 0, CH);
+    ctx.stroke();
+
+    // textura diagonal leve sobre a moldura
+    ctx.save();
+    roundRectPath(ctx, FRAME / 2, FRAME / 2, CW - FRAME, CH - FRAME, 30);
+    ctx.lineWidth = FRAME;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.setLineDash([3, 10]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // friso interno claro (relevo)
+    roundRectPath(ctx, FRAME + 6, FRAME + 6, CW - (FRAME + 6) * 2, CH - (FRAME + 6) * 2, 22);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,248,214,0.55)';
+    ctx.stroke();
+
+    // friso externo escuro
+    roundRectPath(ctx, 6, 6, CW - 12, CH - 12, 30);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.stroke();
+  }
+
+  /* ====================== ÁREA DA FOTO + CAMISA ====================== */
+
+  function drawPhotoArea() {
+    // sombra projetada (profundidade)
+    ctx.save();
+    archPath(ctx, PW_X, PW_Y, PW_W, PW_H, PW_ARCH, PW_R);
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 35;
+    ctx.shadowOffsetY = 14;
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    archPath(ctx, PW_X, PW_Y, PW_W, PW_H, PW_ARCH, PW_R);
+    ctx.clip();
+
+    if (state.img) {
+      var iw = state.img.naturalWidth || state.img.width;
+      var ih = state.img.naturalHeight || state.img.height;
+      var baseScale = Math.max(PW_W / iw, PW_H / ih);
+      var scale = baseScale * state.zoom;
+      var dw = iw * scale, dh = ih * scale;
+      var dx = PW_X + (PW_W - dw) / 2 + state.offX;
+      var dy = PW_Y + (PW_H - dh) / 2 + state.offY;
+
+      ctx.filter = 'contrast(1.08) saturate(1.1) brightness(1.02)';
+      ctx.drawImage(state.img, dx, dy, dw, dh);
+      ctx.filter = 'none';
+    } else {
+      // placeholder
+      ctx.fillStyle = '#1c2029';
+      ctx.fillRect(PW_X, PW_Y, PW_W, PW_H);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.font = '600 34px Oswald';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('FOTO DO JOGADOR', PW_X + PW_W / 2, PW_Y + PW_H / 2);
+    }
+
+    // sobreposição de cor quente p/ integrar com o fundo dourado
+    var warm = ctx.createLinearGradient(PW_X, PW_Y, PW_X, PW_BOTTOM);
+    warm.addColorStop(0, 'rgba(20,15,5,0.30)');
+    warm.addColorStop(0.5, 'rgba(212,175,55,0.06)');
+    warm.addColorStop(1, 'rgba(212,150,30,0.20)');
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = warm;
+    ctx.fillRect(PW_X, PW_Y, PW_W, PW_H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // vinheta interna sutil
+    var iv = ctx.createRadialGradient(PW_X + PW_W / 2, PW_Y + PW_H * 0.4, PW_W * 0.2, PW_X + PW_W / 2, PW_Y + PW_H * 0.5, PW_W * 0.75);
+    iv.addColorStop(0, 'rgba(0,0,0,0)');
+    iv.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = iv;
+    ctx.fillRect(PW_X, PW_Y, PW_W, PW_H);
+
+    drawJersey();
+
+    ctx.restore(); // remove clip
+
+    // brilho dourado na borda interna do escudo (luz de contorno)
+    archPath(ctx, PW_X, PW_Y, PW_W, PW_H, PW_ARCH, PW_R);
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = goldGradient(ctx, PW_X, PW_Y, PW_X, PW_BOTTOM);
+    ctx.shadowColor = 'rgba(255,215,120,0.5)';
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawJersey() {
+    var left = PW_X - 25, right = PW_X + PW_W + 25;
+    var shoulderY = JERSEY_TOP;
+    var bottom = PW_BOTTOM + 40;
+    var cx = PW_X + PW_W / 2;
+
+    // corpo da camisa (amarela)
+    ctx.beginPath();
+    ctx.moveTo(left, shoulderY + 55);
+    ctx.quadraticCurveTo(PW_X + PW_W * 0.22, shoulderY - 10, cx - 95, shoulderY + 60);
+    ctx.quadraticCurveTo(cx - 35, shoulderY + 115, cx, shoulderY + 140);
+    ctx.quadraticCurveTo(cx + 35, shoulderY + 115, cx + 95, shoulderY + 60);
+    ctx.quadraticCurveTo(PW_X + PW_W * 0.78, shoulderY - 10, right, shoulderY + 55);
+    ctx.lineTo(right, bottom);
+    ctx.lineTo(left, bottom);
+    ctx.closePath();
+
+    var jerseyGrad = ctx.createLinearGradient(left, shoulderY, left, bottom);
+    jerseyGrad.addColorStop(0, '#fff066');
+    jerseyGrad.addColorStop(0.4, '#f7d717');
+    jerseyGrad.addColorStop(1, '#caa30a');
+    ctx.fillStyle = jerseyGrad;
+    ctx.fill();
+
+    // sombreamento lateral da camisa (volume)
+    ctx.save();
+    ctx.clip();
+    var shade = ctx.createLinearGradient(left, 0, right, 0);
+    shade.addColorStop(0, 'rgba(0,0,0,0.18)');
+    shade.addColorStop(0.5, 'rgba(255,255,255,0.10)');
+    shade.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.fillStyle = shade;
+    ctx.fillRect(left, shoulderY - 20, right - left, bottom - shoulderY + 20);
+    ctx.restore();
+
+    // gola e ombros em verde
+    ctx.beginPath();
+    ctx.moveTo(left, shoulderY + 55);
+    ctx.quadraticCurveTo(PW_X + PW_W * 0.22, shoulderY - 10, cx - 95, shoulderY + 60);
+    ctx.quadraticCurveTo(cx - 35, shoulderY + 115, cx, shoulderY + 140);
+    ctx.quadraticCurveTo(cx + 35, shoulderY + 115, cx + 95, shoulderY + 60);
+    ctx.quadraticCurveTo(PW_X + PW_W * 0.78, shoulderY - 10, right, shoulderY + 55);
+    ctx.lineWidth = 16;
+    ctx.strokeStyle = '#0f7a3d';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.stroke();
+
+    drawCrest();
+  }
+
+  function drawCrest() {
+    var x = CR_X, y = CR_Y, w = CR_W, h = CR_H;
+    ctx.save();
+    archPath(ctx, x, y, w, h, h * 0.32, 10);
+    var g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, '#1a9650');
+    g.addColorStop(0.55, '#0f7a3d');
+    g.addColorStop(1, '#0a5128');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = goldGradient(ctx, x, y, x, y + h);
+    ctx.stroke();
+
+    // faixa dourada central
+    ctx.save();
+    archPath(ctx, x, y, w, h, h * 0.32, 10);
+    ctx.clip();
+    ctx.fillStyle = '#f3d27a';
+    ctx.fillRect(x, y + h * 0.42, w, h * 0.22);
+    ctx.restore();
+
+    // estrela pequena
+    drawStar(ctx, x + w / 2, y + h * 0.32, 9, 5, '#fff6d8');
+    ctx.restore();
+  }
+
+  function drawStar(c, cx, cy, r, points, color) {
+    c.save();
+    c.beginPath();
+    var rot = Math.PI / 2 * 3;
+    var step = Math.PI / points;
+    c.moveTo(cx, cy - r);
+    for (var i = 0; i < points; i++) {
+      var x1 = cx + Math.cos(rot) * r, y1 = cy + Math.sin(rot) * r;
+      c.lineTo(x1, y1);
+      rot += step;
+      var x2 = cx + Math.cos(rot) * (r * 0.45), y2 = cy + Math.sin(rot) * (r * 0.45);
+      c.lineTo(x2, y2);
+      rot += step;
+    }
+    c.closePath();
+    c.fillStyle = color;
+    c.fill();
+    c.restore();
+  }
+
+  /* ====================== PLACA NÚMERO + "LEGENDS" ====================== */
+
+  function drawNumberPlaque() {
+    ctx.save();
+    roundRectPath(ctx, NP_X, NP_Y, NP_W, NP_H, NP_R);
+    ctx.fillStyle = 'rgba(8,10,8,0.42)';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = goldGradient(ctx, NP_X, NP_Y, NP_X, NP_Y + NP_H);
+    ctx.stroke();
+    ctx.restore();
+
+    var cx = NP_X + NP_W / 2;
+    drawEmbossedText(ctx, 'LEGENDS', cx, NP_Y + 44, 40, 'Cinzel, serif', NP_W - 30);
+
+    roundRectPath(ctx, NP_X + 30, NP_Y + 70, NP_W - 60, 2, 0);
+    ctx.strokeStyle = 'rgba(212,175,55,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    var num = (numberInput.value || '10').replace(/\D/g, '').slice(0, 2) || '10';
+    drawEmbossedText(ctx, num, cx, NP_Y + NP_H / 2 + 38, 150, 'Anton, sans-serif', NP_W - 30);
+  }
+
+  /* ====================== FAIXA DO NOME / POSIÇÃO ====================== */
+
+  function drawNameBand() {
+    roundRectPath(ctx, NB_X, NB_Y, NB_W, NB_H, NB_R);
+    var bg = ctx.createLinearGradient(NB_X, NB_Y, NB_X, NB_Y + NB_H);
+    bg.addColorStop(0, '#0c2417');
+    bg.addColorStop(1, '#040d08');
+    ctx.fillStyle = bg;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = goldGradient(ctx, NB_X, NB_Y, NB_X, NB_Y + NB_H);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    roundRectPath(ctx, NB_X + 6, NB_Y + 6, NB_W - 12, NB_H - 12, NB_R - 4);
+    ctx.stroke();
+
+    var name = (nameInput.value || 'NOME DO JOGADOR').toUpperCase();
+    drawEmbossedText(ctx, name, NB_X + NB_W / 2, NB_Y + NB_H / 2 + 4, 64, 'Anton, sans-serif', NB_W - 70);
+  }
+
+  function drawPositionText() {
+    var pos = (positionInput.value || 'ATACANTE').toUpperCase();
+    var cx = CW / 2;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(212,175,55,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 220, POS_Y);
+    ctx.lineTo(cx - 130, POS_Y);
+    ctx.moveTo(cx + 130, POS_Y);
+    ctx.lineTo(cx + 220, POS_Y);
+    ctx.stroke();
+    ctx.restore();
+
+    drawSimpleText(ctx, pos, cx, POS_Y, 36, "'Oswald', sans-serif", '#e9d8a6', 4);
+  }
+
+  /* ====================== SELOS INFERIORES ====================== */
+
+  function drawBadgeRing(cx, cy, r, fillStyle) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = fillStyle;
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 14;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = goldGradient(ctx, cx, cy - r, cx, cy + r);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function drawFlagSeal() {
+    var cx = BADGE_FLAG_X, cy = BADGE_Y, r = BADGE_R;
+    drawBadgeRing(cx, cy, r, '#0a5128');
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+    ctx.clip();
+    // losango amarelo estilizado
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r * 0.72);
+    ctx.lineTo(cx + r * 0.72, cy);
+    ctx.lineTo(cx, cy + r * 0.72);
+    ctx.lineTo(cx - r * 0.72, cy);
+    ctx.closePath();
+    var yg = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+    yg.addColorStop(0, '#fff066');
+    yg.addColorStop(1, '#e3b913');
+    ctx.fillStyle = yg;
+    ctx.fill();
+    // círculo azul central
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.34, 0, Math.PI * 2);
+    var bg = ctx.createRadialGradient(cx - r * 0.1, cy - r * 0.1, 2, cx, cy, r * 0.34);
+    bg.addColorStop(0, '#3f7fd1');
+    bg.addColorStop(1, '#1c4a8a');
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBallIcon() {
+    var cx = BADGE_BALL_X, cy = BADGE_Y, r = BADGE_R;
+    var ballGrad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.15, cx, cy, r);
+    ballGrad.addColorStop(0, '#fff6d8');
+    ballGrad.addColorStop(0.4, '#e8c352');
+    ballGrad.addColorStop(1, '#8a6516');
+    drawBadgeRing(cx, cy, r, ballGrad);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(50,35,5,0.55)';
+    ctx.lineWidth = 3;
+    // pentágono central
+    ctx.beginPath();
+    for (var i = 0; i < 5; i++) {
+      var ang = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+      var px = cx + Math.cos(ang) * r * 0.32;
+      var py = cy + Math.sin(ang) * r * 0.32;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    // linhas radiais (gomos)
+    for (var j = 0; j < 5; j++) {
+      var ang2 = -Math.PI / 2 + j * (Math.PI * 2 / 5);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang2) * r * 0.32, cy + Math.sin(ang2) * r * 0.32);
+      ctx.lineTo(cx + Math.cos(ang2) * r * 0.95, cy + Math.sin(ang2) * r * 0.95);
+      ctx.stroke();
+    }
+    // brilho
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.32, cy - r * 0.32, r * 0.22, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawLegendsPlate() {
+    var cx = BADGE_PLATE_X, cy = BADGE_Y, r = BADGE_R;
+    drawBadgeRing(cx, cy, r, '#0d0f08');
+    drawStar(ctx, cx, cy - 28, 9, 5, '#f3d27a');
+    drawEmbossedText(ctx, 'LEGENDS', cx, cy + 14, 26, 'Cinzel, serif', r * 1.7);
+  }
+
+  /* ====================== BRILHO FINAL (ACABAMENTO) ====================== */
+
+  function drawSheen() {
+    ctx.save();
+    var sheen = ctx.createLinearGradient(0, 0, CW, CH);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.07)');
+    sheen.addColorStop(0.18, 'rgba(255,255,255,0.0)');
+    sheen.addColorStop(0.5, 'rgba(255,255,255,0.0)');
+    sheen.addColorStop(0.78, 'rgba(255,255,255,0.0)');
+    sheen.addColorStop(1, 'rgba(255,255,255,0.05)');
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.restore();
+  }
+
+  /* ====================== RENDER MASTER ====================== */
+
+  function draw() {
+    ctx.clearRect(0, 0, CW, CH);
+    drawBackground();
+    drawFrame();
+    drawPhotoArea();
+    drawNumberPlaque();
+    drawNameBand();
+    drawPositionText();
+    drawFlagSeal();
+    drawLegendsPlate();
+    drawBallIcon();
+    drawSheen();
+  }
+
+  var pendingFrame = null;
+  function requestDraw() {
+    if (pendingFrame) return;
+    pendingFrame = requestAnimationFrame(function () {
+      pendingFrame = null;
+      draw();
+    });
+  }
+
+  /* ====================== UPLOAD DE FOTO ====================== */
+
+  function loadFile(file) {
+    if (!file || !file.type || file.type.indexOf('image') !== 0) return;
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      state.img = img;
+      state.zoom = 1;
+      state.offX = 0;
+      state.offY = 0;
+      zoomRange.value = 100;
+      dzThumb.src = url;
+      dropzone.classList.add('has-photo');
+      adjustBox.classList.add('show');
+      document.querySelector('.dz-default-text').style.display = 'none';
+      document.querySelector('.dz-loaded-text').style.display = 'block';
+      requestDraw();
+    };
+    img.src = url;
+  }
+
+  photoInput.addEventListener('change', function (e) {
+    if (e.target.files && e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      dropzone.classList.add('drag');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  zoomRange.addEventListener('input', function () {
+    state.zoom = parseInt(zoomRange.value, 10) / 100;
+    requestDraw();
+  });
+
+  resetAdjustBtn.addEventListener('click', function () {
+    state.zoom = 1; state.offX = 0; state.offY = 0;
+    zoomRange.value = 100;
+    requestDraw();
+  });
+
+  /* ====================== ARRASTAR FOTO NO CANVAS ====================== */
+
+  var dragging = false, lastX = 0, lastY = 0;
+
+  function pointerDown(e) {
+    if (!state.img) return;
+    dragging = true;
+    var p = (e.touches && e.touches[0]) || e;
+    lastX = p.clientX; lastY = p.clientY;
+    cardStage.classList.add('dragging');
+  }
+  function pointerMove(e) {
+    if (!dragging) return;
+    var p = (e.touches && e.touches[0]) || e;
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    var dx = (p.clientX - lastX) * scaleX;
+    var dy = (p.clientY - lastY) * scaleY;
+    state.offX += dx;
+    state.offY += dy;
+    lastX = p.clientX; lastY = p.clientY;
+    requestDraw();
+    e.preventDefault();
+  }
+  function pointerUp() {
+    dragging = false;
+    cardStage.classList.remove('dragging');
+  }
+
+  cardStage.addEventListener('mousedown', pointerDown);
+  window.addEventListener('mousemove', pointerMove);
+  window.addEventListener('mouseup', pointerUp);
+  cardStage.addEventListener('touchstart', pointerDown, { passive: true });
+  window.addEventListener('touchmove', pointerMove, { passive: false });
+  window.addEventListener('touchend', pointerUp);
+
+  /* ====================== CAMPOS DE TEXTO (live update) ====================== */
+
+  [nameInput, numberInput, positionInput].forEach(function (el) {
+    el.addEventListener('input', requestDraw);
+  });
+  numberInput.addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 2);
+  });
+
+  /* ====================== GERAR / VALIDAR ====================== */
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('show');
+  }
+  function clearError() {
+    errorMsg.classList.remove('show');
+  }
+
+  generateBtn.addEventListener('click', function () {
+    clearError();
+    if (!state.img) {
+      showError('Envie uma foto antes de gerar a figurinha.');
+      return;
+    }
+    if (!nameInput.value.trim()) {
+      showError('Digite o nome do jogador.');
+      return;
+    }
+    draw();
+    state.generated = true;
+    downloadPngBtn.disabled = false;
+    downloadPdfBtn.disabled = false;
+    cardStage.style.boxShadow = '0 0 0 3px rgba(212,175,55,0.7), 0 18px 50px rgba(0,0,0,0.55)';
+    setTimeout(function () {
+      cardStage.style.boxShadow = '';
+    }, 600);
+    cardStage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  /* ====================== EXPORTAÇÃO ====================== */
+
+  function safeFileName() {
+    var n = (nameInput.value || 'jogador').trim().toLowerCase();
+    n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    n = n.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return 'legends-' + (n || 'jogador');
+  }
+
+  downloadPngBtn.addEventListener('click', function () {
+    draw();
+    canvas.toBlob(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = safeFileName() + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, 'image/png');
+  });
+
+  downloadPdfBtn.addEventListener('click', function () {
+    draw();
+    var dataUrl = canvas.toDataURL('image/png');
+    var jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFCtor) {
+      showError('Não foi possível carregar o gerador de PDF. Verifique sua conexão e tente novamente.');
+      return;
+    }
+    var doc = new jsPDFCtor({ unit: 'mm', format: [50, 65], orientation: 'portrait' });
+    doc.addImage(dataUrl, 'PNG', 0, 0, 50, 65, undefined, 'FAST');
+    doc.save(safeFileName() + '.pdf');
+  });
+
+  /* ====================== INÍCIO ====================== */
+
+  draw();
+
+})();
+</script>
+</body>
+</html>
